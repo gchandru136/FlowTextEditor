@@ -8,7 +8,7 @@ import { parseCssColor, rgbToHex } from './color';
 import { openColorPicker } from './colorPicker';
 import { openLinkPopover } from './linkPopover';
 import { initTableTools } from './tableTools';
-import type { AiTextAction, AiToneType, EmailRichTextEditorProps } from './types';
+import type { AiTextAction, AiToneType, FlowTextEditorProps } from './types';
 
 /** Wrap each ignored word in a non-spellchecked span (pure, module-level). */
 const applySpellcheckIgnore = (content: string, words: readonly string[]): string =>
@@ -259,7 +259,7 @@ const clampNumber = (value: number, min: number, max: number): number =>
  * formatting toolbar and optional AI text tools. Content is controlled via
  * `mailContent` / `setMailContent`.
  */
-export function EmailRichTextEditor({
+export function FlowTextEditor({
   mailContent,
   setMailContent,
   resetMailContent = false,
@@ -267,7 +267,7 @@ export function EmailRichTextEditor({
   modalHeight = '',
   spellcheckIgnoreWords = [],
   onAiTextAction,
-}: EmailRichTextEditorProps) {
+}: FlowTextEditorProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [doc, setDoc] = useState<Document | null>(null);
   const [savedRange, setSavedRange] = useState<Range | null>(null);
@@ -323,7 +323,7 @@ export function EmailRichTextEditor({
   ): Promise<string | null> => {
     if (!onAiTextAction) {
       console.warn(
-        '[EmailRichTextEditor] `onAiTextAction` prop was not provided; AI tools are disabled.',
+        '[FlowTextEditor] `onAiTextAction` prop was not provided; AI tools are disabled.',
       );
       return null;
     }
@@ -332,7 +332,7 @@ export function EmailRichTextEditor({
       const result = await onAiTextAction({ action, text, wordCount, toneType });
       return result ?? null;
     } catch (error) {
-      console.error('[EmailRichTextEditor] AI request failed:', error);
+      console.error('[FlowTextEditor] AI request failed:', error);
       return null;
     } finally {
       setLoading(false);

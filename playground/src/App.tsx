@@ -1,7 +1,7 @@
 import { useState } from 'react';
 // Imported by the library's PUBLIC package name — exactly how an external
 // consumer would. In dev this resolves to `src/` for instant HMR.
-import { cx, EmailRichTextEditor } from 'flowtext-editor';
+import { cx, FlowTextEditor } from 'flowtext-editor';
 import type { AiTextActionHandler } from 'flowtext-editor';
 // Default preview document — an exported email template loaded as raw HTML.
 // Swap this file (or the import) to preview any other content.
@@ -70,7 +70,7 @@ export function App() {
         <main className="pg-canvas">
           <div className="pg-canvas-inner">
             <div className="pg-stage">
-              <EmailRichTextEditor
+              <FlowTextEditor
                 mailContent={mailContent}
                 setMailContent={setMailContent}
                 showAiTools={showAiTools}

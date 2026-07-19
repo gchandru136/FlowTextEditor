@@ -27,7 +27,7 @@ export interface AiTextActionPayload {
  */
 export type AiTextActionHandler = (payload: AiTextActionPayload) => Promise<string | null>;
 
-export interface EmailRichTextEditorProps {
+export interface FlowTextEditorProps {
   /** Current HTML content of the editor (controlled). */
   mailContent: RichTextValue;
   /** Called with the editor's HTML whenever the user edits it. */

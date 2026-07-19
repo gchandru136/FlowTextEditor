@@ -3,7 +3,7 @@
 A reusable **Email Rich Text Editor** React component, packaged for distribution
 via npm. Built with React + TypeScript and bundled with Vite in library mode.
 
-The library ships one component — `EmailRichTextEditor` — a `contenteditable`
+The library ships one component — `FlowTextEditor` — a `contenteditable`
 editor rendered inside an isolated iframe, with a formatting toolbar (bold,
 lists, alignment, links, tables, …) and optional AI text tools.
 
@@ -69,7 +69,7 @@ Edit anything in `src/` and the preview updates instantly.
 The playground imports the library by its **public package name**:
 
 ```ts
-import { EmailRichTextEditor } from 'flowtext-editor';
+import { FlowTextEditor } from 'flowtext-editor';
 ```
 
 During development that name is aliased to `src/index.ts` (see
@@ -115,7 +115,7 @@ Configured in `package.json` for modern, dual-format consumption:
 
 ```tsx
 import { useState } from 'react';
-import { EmailRichTextEditor } from 'flowtext-editor';
+import { FlowTextEditor } from 'flowtext-editor';
 import type { AiTextActionHandler } from 'flowtext-editor';
 import 'flowtext-editor/styles.css';
 
@@ -133,7 +133,7 @@ const handleAiText: AiTextActionHandler = async ({ action, text, wordCount, tone
 export function Composer() {
   const [content, setContent] = useState('<p>Hello!</p>');
   return (
-    <EmailRichTextEditor
+    <FlowTextEditor
       mailContent={content}
       setMailContent={setContent}
       onAiTextAction={handleAiText}

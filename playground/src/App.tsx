@@ -51,11 +51,11 @@ export function App() {
       <header className="pg-header">
         <div className="pg-brand">
           <span className="pg-logo" aria-hidden>
-            ✉️
+             🗐
           </span>
           <div>
-            <h1 className="pg-title">Flow Text Editor</h1>
-            <p className="pg-subtitle">Development playground</p>
+            <h1 className="pg-title">FlowText Editor</h1>
+            <p className="pg-subtitle">Playground Area</p>
           </div>
         </div>
         <div className="pg-header-actions">

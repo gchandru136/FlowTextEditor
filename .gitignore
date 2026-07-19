@@ -31,3 +31,5 @@ Thumbs.db
 *.tsbuildinfo
 .eslintcache
 node_modules/.tmp/
+
+.vercel

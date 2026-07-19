@@ -8,7 +8,7 @@ import { parseCssColor, rgbToHex } from './color';
 import { openColorPicker } from './colorPicker';
 import { openLinkPopover } from './linkPopover';
 import { initTableTools } from './tableTools';
-import type { AiTextAction, AiToneType, EmailRichTextEditorProps } from './types';
+import type { AiTextAction, AiToneType, FlowTextEditorProps } from './types';
 
 /** Wrap each ignored word in a non-spellchecked span (pure, module-level). */
 const applySpellcheckIgnore = (content: string, words: readonly string[]): string =>
@@ -259,16 +259,15 @@ const clampNumber = (value: number, min: number, max: number): number =>
  * formatting toolbar and optional AI text tools. Content is controlled via
  * `mailContent` / `setMailContent`.
  */
-export function EmailRichTextEditor({
+export function FlowTextEditor({
   mailContent,
   setMailContent,
   resetMailContent = false,
   showAiTools = false,
   modalHeight = '',
-  selectedProduct,
   spellcheckIgnoreWords = [],
   onAiTextAction,
-}: EmailRichTextEditorProps) {
+}: FlowTextEditorProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [doc, setDoc] = useState<Document | null>(null);
   const [savedRange, setSavedRange] = useState<Range | null>(null);
@@ -324,7 +323,7 @@ export function EmailRichTextEditor({
   ): Promise<string | null> => {
     if (!onAiTextAction) {
       console.warn(
-        '[EmailRichTextEditor] `onAiTextAction` prop was not provided; AI tools are disabled.',
+        '[FlowTextEditor] `onAiTextAction` prop was not provided; AI tools are disabled.',
       );
       return null;
     }
@@ -333,7 +332,7 @@ export function EmailRichTextEditor({
       const result = await onAiTextAction({ action, text, wordCount, toneType });
       return result ?? null;
     } catch (error) {
-      console.error('[EmailRichTextEditor] AI request failed:', error);
+      console.error('[FlowTextEditor] AI request failed:', error);
       return null;
     } finally {
       setLoading(false);
@@ -1538,11 +1537,11 @@ export function EmailRichTextEditor({
     const makeColorControl = (kind: ColorKind) => {
       const isText = kind === 'text';
       const wrap = editorDoc.createElement('div');
-      wrap.className = 'erte-select-wrap erte-color-wrap';
+      wrap.className = 'erte-select-wrap erte-split-wrap erte-color-wrap';
 
       const main = editorDoc.createElement('button');
       main.type = 'button';
-      main.className = 'erte-btn erte-color-btn';
+      main.className = 'erte-btn erte-split-main erte-color-btn';
       main.title = isText ? 'Text color' : 'Highlight color';
       main.setAttribute('aria-label', main.title);
       main.innerHTML = `${isText ? '<span class="erte-color-glyph">A</span>' : icons.highlighter}`;
@@ -1558,7 +1557,7 @@ export function EmailRichTextEditor({
 
       const caretBtn = editorDoc.createElement('button');
       caretBtn.type = 'button';
-      caretBtn.className = 'erte-select erte-color-caret';
+      caretBtn.className = 'erte-select erte-split-caret erte-color-caret';
       caretBtn.title = isText ? 'Text color palette' : 'Highlight color palette';
       caretBtn.setAttribute('aria-label', caretBtn.title);
       caretBtn.setAttribute('aria-haspopup', 'listbox');
@@ -2271,7 +2270,7 @@ export function EmailRichTextEditor({
               .erte-list-custom-apply:hover { background: var(--erte-hover-bg); border-color: #d0d0d0; }
 
               /* Colour tools (text colour + highlight split buttons) */
-              .erte-color-group { gap: 0; }
+              .erte-color-group { gap: 2px; }
               .erte-color-wrap { position: relative; }
               .erte-color-btn { width: 30px; position: relative; }
               .erte-color-glyph { font-size: 15px; font-weight: 700; line-height: 1; transform: translateY(-2px); }
@@ -2285,12 +2284,6 @@ export function EmailRichTextEditor({
                 background: #eceff2;
                 box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
               }
-              .erte-color-caret {
-                width: 16px; min-width: 0; height: 34px; padding: 0; margin-right: 2px;
-                border: none; background: transparent; justify-content: center;
-                border-radius: var(--erte-radius);
-              }
-              .erte-color-caret:hover { background: var(--erte-hover-bg); }
               .erte-color-menu { left: auto; right: 0; padding: 8px; width: max-content; }
               .erte-color-remove, .erte-color-custom {
                 display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px;
@@ -2497,7 +2490,7 @@ export function EmailRichTextEditor({
       editor.innerHTML = displayContent;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mailContent, selectedProduct, resetMailContent]);
+  }, [mailContent, resetMailContent]);
 
   // Propagate user edits back to the parent.
   useEffect(() => {
@@ -2520,14 +2513,14 @@ export function EmailRichTextEditor({
   // Close the link popover (its listeners + DOM) on unmount.
   useEffect(() => () => linkPopoverCloseRef.current?.(), []);
 
-  // Re-sync content when the external key or reset toggle changes.
+  // Re-sync content when the reset toggle changes.
   useEffect(() => {
     if (!doc) return;
     const editor = doc.getElementById('editor');
     if (!editor) return;
     editor.innerHTML = applySpellcheckIgnore(mailContent ?? '', spellcheckIgnoreWords);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProduct, resetMailContent]);
+  }, [resetMailContent]);
 
   // (Re)build the toolbar when the iframe document is ready.
   useEffect(() => {

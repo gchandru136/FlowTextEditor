@@ -33,7 +33,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
       fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
       // Single stylesheet, referenced by the package `./styles.css` export.
-      cssFileName: 'emailrichtexteditor',
+      cssFileName: 'flowtext-editor',
     },
     sourcemap: false,
     rollupOptions: {

@@ -1538,11 +1538,11 @@ export function EmailRichTextEditor({
     const makeColorControl = (kind: ColorKind) => {
       const isText = kind === 'text';
       const wrap = editorDoc.createElement('div');
-      wrap.className = 'erte-select-wrap erte-color-wrap';
+      wrap.className = 'erte-select-wrap erte-split-wrap erte-color-wrap';
 
       const main = editorDoc.createElement('button');
       main.type = 'button';
-      main.className = 'erte-btn erte-color-btn';
+      main.className = 'erte-btn erte-split-main erte-color-btn';
       main.title = isText ? 'Text color' : 'Highlight color';
       main.setAttribute('aria-label', main.title);
       main.innerHTML = `${isText ? '<span class="erte-color-glyph">A</span>' : icons.highlighter}`;
@@ -1558,7 +1558,7 @@ export function EmailRichTextEditor({
 
       const caretBtn = editorDoc.createElement('button');
       caretBtn.type = 'button';
-      caretBtn.className = 'erte-select erte-color-caret';
+      caretBtn.className = 'erte-select erte-split-caret erte-color-caret';
       caretBtn.title = isText ? 'Text color palette' : 'Highlight color palette';
       caretBtn.setAttribute('aria-label', caretBtn.title);
       caretBtn.setAttribute('aria-haspopup', 'listbox');
@@ -2271,7 +2271,7 @@ export function EmailRichTextEditor({
               .erte-list-custom-apply:hover { background: var(--erte-hover-bg); border-color: #d0d0d0; }
 
               /* Colour tools (text colour + highlight split buttons) */
-              .erte-color-group { gap: 0; }
+              .erte-color-group { gap: 2px; }
               .erte-color-wrap { position: relative; }
               .erte-color-btn { width: 30px; position: relative; }
               .erte-color-glyph { font-size: 15px; font-weight: 700; line-height: 1; transform: translateY(-2px); }
@@ -2285,12 +2285,6 @@ export function EmailRichTextEditor({
                 background: #eceff2;
                 box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
               }
-              .erte-color-caret {
-                width: 16px; min-width: 0; height: 34px; padding: 0; margin-right: 2px;
-                border: none; background: transparent; justify-content: center;
-                border-radius: var(--erte-radius);
-              }
-              .erte-color-caret:hover { background: var(--erte-hover-bg); }
               .erte-color-menu { left: auto; right: 0; padding: 8px; width: max-content; }
               .erte-color-remove, .erte-color-custom {
                 display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px;

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 // Imported by the library's PUBLIC package name — exactly how an external
 // consumer would. In dev this resolves to `src/` for instant HMR.
-import { cx, EmailRichTextEditor } from 'emailrichtexteditor';
-import type { AiTextActionHandler } from 'emailrichtexteditor';
+import { cx, FlowTextEditor } from 'flowtext-editor';
+import type { AiTextActionHandler } from 'flowtext-editor';
 // Default preview document — an exported email template loaded as raw HTML.
 // Swap this file (or the import) to preview any other content.
 import sampleEmail from './sample-email.html?raw';
@@ -42,7 +42,7 @@ const mockAiHandler: AiTextActionHandler = async ({ action, text, toneType }) =>
 export function App() {
   const [theme, setTheme] = useState<Theme>('light');
   const [mailContent, setMailContent] = useState<string>(SAMPLE_CONTENT);
-  const [showAiTools, setShowAiTools] = useState<boolean>(false);
+  const showAiTools = false;
 
   const toggleTheme = () => setTheme((current) => (current === 'light' ? 'dark' : 'light'));
 
@@ -51,15 +51,15 @@ export function App() {
       <header className="pg-header">
         <div className="pg-brand">
           <span className="pg-logo" aria-hidden>
-            ✉️
+             🗐
           </span>
           <div>
-            <h1 className="pg-title">Email Rich Text Editor</h1>
-            <p className="pg-subtitle">Local development playground</p>
+            <h1 className="pg-title">FlowText Editor</h1>
+            <p className="pg-subtitle">Playground Area</p>
           </div>
         </div>
         <div className="pg-header-actions">
-          <span className="pg-badge">dev</span>
+          {/* <span className="pg-badge">dev</span> */}
           <button type="button" className="pg-btn" onClick={toggleTheme}>
             {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
           </button>
@@ -67,19 +67,10 @@ export function App() {
       </header>
 
       <div className="pg-body">
-        <aside className="pg-sidebar">
-          <p className="pg-section-label">Components</p>
-          <nav className="pg-nav">
-            <button type="button" className="pg-nav-item pg-nav-item--active">
-              EmailRichTextEditor
-            </button>
-          </nav>
-        </aside>
-
         <main className="pg-canvas">
           <div className="pg-canvas-inner">
             <div className="pg-stage">
-              <EmailRichTextEditor
+              <FlowTextEditor
                 mailContent={mailContent}
                 setMailContent={setMailContent}
                 showAiTools={showAiTools}
@@ -93,30 +84,30 @@ export function App() {
         <aside className="pg-controls">
           <p className="pg-section-label">Controls</p>
 
-          <label className="pg-control">
+          {/* <label className="pg-control">
             <span className="pg-control-label">showAiTools</span>
             <input
               type="checkbox"
               checked={showAiTools}
               onChange={(event) => setShowAiTools(event.target.checked)}
             />
-          </label>
+          </label> */}
 
           <label className="pg-control pg-control--column">
-            <span className="pg-control-label">mailContent (HTML)</span>
+            <span className="pg-control-label">Content (HTML)</span>
             <textarea
               className="pg-textarea"
-              rows={8}
+              rows={20}
               value={mailContent}
               onChange={(event) => setMailContent(event.target.value)}
               spellCheck={false}
             />
           </label>
 
-          <p className="pg-hint">
+          {/* <p className="pg-hint">
             AI buttons use a mock handler (<code>mockAiHandler</code>). Select text in the editor
             and click an AI action to see it transform.
-          </p>
+          </p> */}
         </aside>
       </div>
     </div>

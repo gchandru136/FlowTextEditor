@@ -1,6 +1,6 @@
-export { EmailRichTextEditor } from './EmailRichTextEditor';
+export { FlowTextEditor } from './FlowTextEditor';
 export type {
-  EmailRichTextEditorProps,
+  FlowTextEditorProps,
   AiTextAction,
   AiToneType,
   AiTextActionPayload,

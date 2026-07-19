@@ -1,4 +1,4 @@
 /**
  * Public component exports.
  */
-export * from './EmailRichTextEditor';
+export * from './FlowTextEditor';

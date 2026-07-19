@@ -124,23 +124,27 @@ body {
 .pg-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 220px 1fr 300px;
+  grid-template-columns: 65fr 35fr;
   min-height: 0;
 }
 
-.pg-sidebar,
 .pg-controls {
   background: var(--pg-surface);
   padding: 16px;
   overflow-y: auto;
-}
-
-.pg-sidebar {
-  border-right: 1px solid var(--pg-border);
-}
-
-.pg-controls {
   border-left: 1px solid var(--pg-border);
+}
+
+@media (max-width: 900px) {
+  .pg-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    overflow-y: auto;
+  }
+  .pg-controls {
+    border-left: none;
+    border-top: 1px solid var(--pg-border);
+  }
 }
 
 .pg-section-label {

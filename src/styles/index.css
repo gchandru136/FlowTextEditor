@@ -1,7 +1,7 @@
 /**
  * Library design tokens + base styles.
  *
- * Consumers opt in with:  import 'emailrichtexteditor/styles.css';
+ * Consumers opt in with:  import 'flowtext-editor/styles.css';
  * Everything is namespaced under `--erte-*` to avoid clashing with host apps.
  */
 :root {

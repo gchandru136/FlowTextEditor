@@ -38,8 +38,6 @@ export interface EmailRichTextEditorProps {
   showAiTools?: boolean;
   /** Height of the editor iframe (any CSS length). Defaults to `650px`. */
   modalHeight?: string;
-  /** Optional external key; when it changes the editor re-syncs its content. */
-  selectedProduct?: string | number;
   /** Words wrapped in `spellcheck="false"` spans (e.g. product/brand names). */
   spellcheckIgnoreWords?: string[];
   /** Handler invoked by the AI toolbar buttons. Omit to disable AI features. */

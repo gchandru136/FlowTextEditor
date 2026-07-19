@@ -23,7 +23,7 @@ export default defineConfig({
     alias: [
       {
         // Anchored so only the bare specifier maps to source; subpaths are untouched.
-        find: /^emailrichtexteditor$/,
+        find: /^flowtext-editor$/,
         replacement: fileURLToPath(new URL('../src/index.ts', import.meta.url)),
       },
       ...aliases,

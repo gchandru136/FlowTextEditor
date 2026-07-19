@@ -1,4 +1,4 @@
-# emailrichtexteditor
+# flowtext-editor
 
 A reusable **Email Rich Text Editor** React component, packaged for distribution
 via npm. Built with React + TypeScript and bundled with Vite in library mode.
@@ -69,7 +69,7 @@ Edit anything in `src/` and the preview updates instantly.
 The playground imports the library by its **public package name**:
 
 ```ts
-import { EmailRichTextEditor } from 'emailrichtexteditor';
+import { EmailRichTextEditor } from 'flowtext-editor';
 ```
 
 During development that name is aliased to `src/index.ts` (see
@@ -102,7 +102,7 @@ Configured in `package.json` for modern, dual-format consumption:
     "import": "./dist/index.js", // ESM
     "require": "./dist/index.cjs", // CJS
   },
-  "./styles.css": "./dist/emailrichtexteditor.css",
+  "./styles.css": "./dist/flowtext-editor.css",
 }
 ```
 
@@ -115,9 +115,9 @@ Configured in `package.json` for modern, dual-format consumption:
 
 ```tsx
 import { useState } from 'react';
-import { EmailRichTextEditor } from 'emailrichtexteditor';
-import type { AiTextActionHandler } from 'emailrichtexteditor';
-import 'emailrichtexteditor/styles.css';
+import { EmailRichTextEditor } from 'flowtext-editor';
+import type { AiTextActionHandler } from 'flowtext-editor';
+import 'flowtext-editor/styles.css';
 
 // The component is backend-agnostic: you wire the AI transport here.
 const handleAiText: AiTextActionHandler = async ({ action, text, wordCount, toneType }) => {
@@ -151,11 +151,10 @@ export function Composer() {
 | `showAiTools`           | `boolean`                   | `true`    | Show the AI toolbar. Requires `onAiTextAction`.                 |
 | `onAiTextAction`        | `AiTextActionHandler`       | —         | Handler powering the AI buttons. Omit to disable AI features.   |
 | `resetMailContent`      | `boolean`                   | `false`   | Toggle to force the editor to re-sync `mailContent`.            |
-| `selectedProduct`       | `string \| number`          | —         | Optional external key; changing it re-syncs content.            |
 | `spellcheckIgnoreWords` | `string[]`                  | `[]`      | Words wrapped in `spellcheck="false"` spans (e.g. brand names). |
 | `modalHeight`           | `string`                    | `'650px'` | Height of the editor iframe (any CSS length).                   |
 
-> **Styles:** import `emailrichtexteditor/styles.css` once in your app. The
+> **Styles:** import `flowtext-editor/styles.css` once in your app. The
 > toolbar/editor inside the iframe are self-styled; the stylesheet themes the
 > loading spinner and error toast (and exposes `--erte-*` design tokens).
 
@@ -166,7 +165,6 @@ app-specific coupling was removed so the package stands alone:
 
 - **AI backend** → injected via `onAiTextAction` (was a hard-coded `axios` call
   to a `NEXT_PUBLIC_SERVER_API` endpoint).
-- **`selectedProduct`** → now an optional prop (was read from Redux).
 - **Spellcheck exceptions** → now the `spellcheckIgnoreWords` prop (were
   hard-coded product names).
 - **Loader / toast** → small internal components (were app-local imports).

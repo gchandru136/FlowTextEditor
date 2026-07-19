@@ -1,10 +1,10 @@
 {
-  "name": "@gchandru136/emailrichtexteditor",
+  "name": "flowtext-editor",
   "version": "0.1.0",
   "description": "A reusable, framework-agnostic Email Rich Text Editor React component.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "author": "",
   "type": "module",
@@ -20,7 +20,7 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./styles.css": "./dist/emailrichtexteditor.css",
+    "./styles.css": "./dist/flowtext-editor.css",
     "./package.json": "./package.json"
   },
   "files": [

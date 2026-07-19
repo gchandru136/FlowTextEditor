@@ -1,5 +1,5 @@
 /**
- * Public API surface of `emailrichtexteditor`.
+ * Public API surface of `flowtext-editor`.
  *
  * Everything a consumer can import lives behind these barrels. Keeping the
  * surface explicit here (rather than deep-importing files) lets us refactor

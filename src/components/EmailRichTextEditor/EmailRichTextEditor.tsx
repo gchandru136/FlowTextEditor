@@ -265,7 +265,6 @@ export function EmailRichTextEditor({
   resetMailContent = false,
   showAiTools = false,
   modalHeight = '',
-  selectedProduct,
   spellcheckIgnoreWords = [],
   onAiTextAction,
 }: EmailRichTextEditorProps) {
@@ -2491,7 +2490,7 @@ export function EmailRichTextEditor({
       editor.innerHTML = displayContent;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mailContent, selectedProduct, resetMailContent]);
+  }, [mailContent, resetMailContent]);
 
   // Propagate user edits back to the parent.
   useEffect(() => {
@@ -2514,14 +2513,14 @@ export function EmailRichTextEditor({
   // Close the link popover (its listeners + DOM) on unmount.
   useEffect(() => () => linkPopoverCloseRef.current?.(), []);
 
-  // Re-sync content when the external key or reset toggle changes.
+  // Re-sync content when the reset toggle changes.
   useEffect(() => {
     if (!doc) return;
     const editor = doc.getElementById('editor');
     if (!editor) return;
     editor.innerHTML = applySpellcheckIgnore(mailContent ?? '', spellcheckIgnoreWords);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProduct, resetMailContent]);
+  }, [resetMailContent]);
 
   // (Re)build the toolbar when the iframe document is ready.
   useEffect(() => {

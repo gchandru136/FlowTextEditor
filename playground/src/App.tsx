@@ -41,7 +41,7 @@ const mockAiHandler: AiTextActionHandler = async ({ action, text, toneType }) =>
  */
 export function App() {
   const [theme, setTheme] = useState<Theme>('light');
-  const [mailContent, setMailContent] = useState<string>(SAMPLE_CONTENT);
+  const [content, setContent] = useState<string>(SAMPLE_CONTENT);
   const showAiTools = false;
 
   const toggleTheme = () => setTheme((current) => (current === 'light' ? 'dark' : 'light'));
@@ -71,8 +71,8 @@ export function App() {
           <div className="pg-canvas-inner">
             <div className="pg-stage">
               <FlowTextEditor
-                mailContent={mailContent}
-                setMailContent={setMailContent}
+                content={content}
+                setContent={setContent}
                 showAiTools={showAiTools}
                 onAiTextAction={mockAiHandler}
                 modalHeight="460px"
@@ -98,8 +98,8 @@ export function App() {
             <textarea
               className="pg-textarea"
               rows={20}
-              value={mailContent}
-              onChange={(event) => setMailContent(event.target.value)}
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
               spellCheck={false}
             />
           </label>

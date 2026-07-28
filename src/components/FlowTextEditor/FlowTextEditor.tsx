@@ -18,6 +18,86 @@ const applySpellcheckIgnore = (content: string, words: readonly string[]): strin
     content,
   );
 
+interface SelectionBookmark {
+  startPath: number[];
+  startOffset: number;
+  endPath: number[];
+  endOffset: number;
+}
+
+interface HistorySnapshot {
+  html: string;
+  selection: SelectionBookmark | null;
+}
+
+const getNodePath = (node: Node, root: Node): number[] => {
+  const path: number[] = [];
+  let current: Node | null = node;
+  while (current && current !== root) {
+    const parent: Node | null = current.parentNode;
+    if (!parent) break;
+    const index = Array.prototype.indexOf.call(parent.childNodes, current);
+    path.unshift(index);
+    current = parent;
+  }
+  return path;
+};
+
+const getNodeByPath = (path: number[], root: Node): Node | null => {
+  let current: Node = root;
+  for (const index of path) {
+    if (!current.childNodes || !current.childNodes[index]) return null;
+    current = current.childNodes[index];
+  }
+  return current;
+};
+
+const saveSelectionBookmark = (doc: Document, root: HTMLElement): SelectionBookmark | null => {
+  const sel = doc.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.startContainer) || !root.contains(range.endContainer)) {
+    return null;
+  }
+  return {
+    startPath: getNodePath(range.startContainer, root),
+    startOffset: range.startOffset,
+    endPath: getNodePath(range.endContainer, root),
+    endOffset: range.endOffset,
+  };
+};
+
+const restoreSelectionBookmark = (
+  doc: Document,
+  root: HTMLElement,
+  bookmark: SelectionBookmark | null,
+) => {
+  if (!bookmark) return;
+  const startNode = getNodeByPath(bookmark.startPath, root);
+  const endNode = getNodeByPath(bookmark.endPath, root);
+  if (!startNode || !endNode) return;
+  try {
+    const range = doc.createRange();
+    const maxStart =
+      startNode.nodeType === Node.TEXT_NODE
+        ? (startNode.textContent?.length ?? 0)
+        : startNode.childNodes.length;
+    const maxEnd =
+      endNode.nodeType === Node.TEXT_NODE
+        ? (endNode.textContent?.length ?? 0)
+        : endNode.childNodes.length;
+    range.setStart(startNode, Math.min(bookmark.startOffset, maxStart));
+    range.setEnd(endNode, Math.min(bookmark.endOffset, maxEnd));
+    const sel = doc.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  } catch {
+    // Ignore range restoration error if node structure changed
+  }
+};
+
 /** Commands whose on/off state we reflect as an active toolbar button. */
 const TOGGLE_COMMANDS = new Set<string>([
   'bold',
@@ -257,12 +337,12 @@ const clampNumber = (value: number, min: number, max: number): number =>
 /**
  * A self-contained rich-text editor rendered inside an isolated iframe, with a
  * formatting toolbar and optional AI text tools. Content is controlled via
- * `mailContent` / `setMailContent`.
+ * `content` / `setContent`.
  */
 export function FlowTextEditor({
-  mailContent,
-  setMailContent,
-  resetMailContent = false,
+  content,
+  setContent,
+  resetContent = false,
   showAiTools = false,
   modalHeight = '',
   spellcheckIgnoreWords = [],
@@ -312,6 +392,88 @@ export function FlowTextEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const [size, setSize] = useState<EditorSize>({ width: null, height: null });
+
+  // Unified History Manager Stack
+  const undoStackRef = useRef<HistorySnapshot[]>([]);
+  const redoStackRef = useRef<HistorySnapshot[]>([]);
+  const isHistoryNavigatingRef = useRef(false);
+  const undoBtnRef = useRef<HTMLButtonElement | null>(null);
+  const redoBtnRef = useRef<HTMLButtonElement | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
+
+  const updateUndoRedoButtonState = () => {
+    const canUndo = undoStackRef.current.length > 1;
+    const canRedo = redoStackRef.current.length > 0;
+    if (undoBtnRef.current) {
+      undoBtnRef.current.disabled = !canUndo;
+      undoBtnRef.current.classList.toggle('is-disabled', !canUndo);
+      undoBtnRef.current.style.opacity = canUndo ? '1' : '0.4';
+    }
+    if (redoBtnRef.current) {
+      redoBtnRef.current.disabled = !canRedo;
+      redoBtnRef.current.classList.toggle('is-disabled', !canRedo);
+      redoBtnRef.current.style.opacity = canRedo ? '1' : '0.4';
+    }
+  };
+
+  const takeSnapshot = () => {
+    if (!doc || isHistoryNavigatingRef.current) return;
+    const editor = doc.getElementById('editor');
+    if (!editor) return;
+    const html = editor.innerHTML;
+    const selection = saveSelectionBookmark(doc, editor);
+
+    const top = undoStackRef.current[undoStackRef.current.length - 1];
+    if (top && top.html === html) {
+      top.selection = selection;
+      return;
+    }
+
+    undoStackRef.current.push({ html, selection });
+    if (undoStackRef.current.length > 100) {
+      undoStackRef.current.shift();
+    }
+    redoStackRef.current = [];
+    updateUndoRedoButtonState();
+  };
+
+  const handleUndo = () => {
+    if (!doc || undoStackRef.current.length <= 1) return;
+    const editor = doc.getElementById('editor');
+    if (!editor) return;
+
+    isHistoryNavigatingRef.current = true;
+    const current = undoStackRef.current.pop()!;
+    redoStackRef.current.push(current);
+
+    const target = undoStackRef.current[undoStackRef.current.length - 1];
+    if (target) {
+      editor.innerHTML = target.html;
+      restoreSelectionBookmark(doc, editor, target.selection);
+      propagateContent();
+      syncToolbarState();
+    }
+    isHistoryNavigatingRef.current = false;
+    updateUndoRedoButtonState();
+  };
+
+  const handleRedo = () => {
+    if (!doc || redoStackRef.current.length === 0) return;
+    const editor = doc.getElementById('editor');
+    if (!editor) return;
+
+    isHistoryNavigatingRef.current = true;
+    const next = redoStackRef.current.pop()!;
+    undoStackRef.current.push(next);
+
+    editor.innerHTML = next.html;
+    restoreSelectionBookmark(doc, editor, next.selection);
+    propagateContent();
+    syncToolbarState();
+
+    isHistoryNavigatingRef.current = false;
+    updateUndoRedoButtonState();
+  };
 
   // --- AI ---------------------------------------------------------------
 
@@ -538,6 +700,7 @@ export function FlowTextEditor({
     if (!doc) return;
     restoreSelection();
     doc.execCommand(cmd, false, val ?? undefined);
+    takeSnapshot();
     syncToolbarState();
   };
 
@@ -545,6 +708,8 @@ export function FlowTextEditor({
     if (!doc) return;
     restoreSelection();
     doc.execCommand('insertHTML', false, getTableHtml(rows, cols));
+    takeSnapshot();
+    propagateContent();
   };
 
   // --- Link tool ----------------------------------------------------------
@@ -620,6 +785,7 @@ export function FlowTextEditor({
       doc.execCommand('insertHTML', false, `<a href="${escaped}">${escaped}</a>`);
     }
     saveSelection();
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -637,6 +803,7 @@ export function FlowTextEditor({
     }
     doc.execCommand('unlink');
     saveSelection();
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -651,21 +818,68 @@ export function FlowTextEditor({
     }
     saveSelection();
     const selection = doc.getSelection();
-    const range =
+    let range =
       selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
     const existingLink = range ? findLinkInRange(range) : null;
+
+    let tempSpan: HTMLSpanElement | null = null;
+
+    if (existingLink && existingLink.isConnected) {
+      existingLink.classList.add('erte-link-editing');
+    } else if (range && !range.collapsed) {
+      tempSpan = doc.createElement('span');
+      tempSpan.setAttribute('data-erte-link-temp', 'true');
+      tempSpan.className = 'erte-link-temp-highlight';
+      try {
+        range.surroundContents(tempSpan);
+      } catch {
+        const contents = range.extractContents();
+        tempSpan.appendChild(contents);
+        range.insertNode(tempSpan);
+      }
+      const newRange = doc.createRange();
+      newRange.selectNodeContents(tempSpan);
+      range = newRange;
+    }
+
+    const cleanupTempHighlight = () => {
+      if (existingLink && existingLink.isConnected) {
+        existingLink.classList.remove('erte-link-editing');
+      }
+      if (tempSpan && tempSpan.isConnected) {
+        const parent = tempSpan.parentElement;
+        if (parent) {
+          const contents = Array.from(tempSpan.childNodes);
+          tempSpan.replaceWith(...contents);
+          const firstNode = contents[0];
+          const lastNode = contents[contents.length - 1];
+          if (firstNode && lastNode) {
+            const newRange = doc.createRange();
+            newRange.setStartBefore(firstNode);
+            newRange.setEndAfter(lastNode);
+            range = newRange;
+          }
+        }
+      }
+    };
+
     linkPopoverCloseRef.current = openLinkPopover({
       doc,
       anchor: button,
       initialUrl: existingLink?.getAttribute('href') ?? '',
       hasLink: existingLink !== null,
-      onApply: (url) => applyLink(url, range, existingLink),
-      onRemove: () => removeLink(range, existingLink),
+      onApply: (url) => {
+        cleanupTempHighlight();
+        applyLink(url, range, existingLink);
+      },
+      onRemove: () => {
+        cleanupTempHighlight();
+        removeLink(range, existingLink);
+      },
       onClose: (reason) => {
         linkPopoverCloseRef.current = null;
-        // Hand focus/selection back to the editor unless the user clicked
-        // elsewhere; apply/remove already restored it themselves.
-        if (reason === 'escape' || reason === 'programmatic') {
+        cleanupTempHighlight();
+        if (reason === 'escape' || reason === 'programmatic' || reason === 'outside') {
           restoreLinkRange(range);
           syncToolbarState();
         }
@@ -680,7 +894,7 @@ export function FlowTextEditor({
     const editor = doc.getElementById('editor');
     if (!editor) return;
     isInternalEdit.current = true;
-    setMailContent(editor.innerHTML);
+    setContent(editor.innerHTML);
     setTimeout(() => {
       isInternalEdit.current = false;
     }, 100);
@@ -692,23 +906,7 @@ export function FlowTextEditor({
 
   // Decorate the blockquote/pre around each selection endpoint with inline
   // styles (email-export friendly) and a marker attribute for detection.
-  const decorateSelectionBlocks = (tagName: 'BLOCKQUOTE' | 'PRE') => {
-    if (!doc) return;
-    const selection = doc.getSelection();
-    if (!selection) return;
-    const attr = tagName === 'PRE' ? 'data-erte-code' : 'data-erte-quote';
-    const styles = tagName === 'PRE' ? CODE_BLOCK_INLINE_STYLE : QUOTE_INLINE_STYLE;
-    for (const endpoint of [selection.anchorNode, selection.focusNode]) {
-      const blockEl = closestFromNode(
-        endpoint,
-        (el) => el.tagName === tagName && !el.hasAttribute(attr),
-      );
-      if (blockEl) {
-        blockEl.setAttribute(attr, 'true');
-        applyInlineStyles(blockEl, styles);
-      }
-    }
-  };
+
 
   // Apply a block-level format. Handles the two decorated pseudo-formats on
   // top of formatBlock: Block Quote (semantic, styled blockquote) and Code
@@ -749,6 +947,146 @@ export function FlowTextEditor({
     blocks.forEach(stripBlockOverrides);
   };
 
+  const unwrapCustomBlock = (el: HTMLElement) => {
+    if (!doc) return;
+    const parent = el.parentElement;
+    if (!parent) return;
+    const children = Array.from(el.childNodes);
+    const frag = doc.createDocumentFragment();
+    if (children.length === 0) {
+      const p = doc.createElement('p');
+      p.innerHTML = '&nbsp;';
+      frag.appendChild(p);
+    } else {
+      children.forEach((child) => {
+        if (
+          child.nodeType === Node.ELEMENT_NODE &&
+          ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes((child as Element).tagName)
+        ) {
+          frag.appendChild(child);
+        } else if (child.nodeType === Node.TEXT_NODE && !child.textContent?.trim()) {
+          // ignore blank text node
+        } else {
+          const p = doc.createElement('p');
+          p.appendChild(child);
+          frag.appendChild(p);
+        }
+      });
+    }
+    parent.replaceChild(frag, el);
+  };
+
+  const applyCustomBlockWrap = (
+    tagName: 'BLOCKQUOTE' | 'PRE',
+    attr: 'data-erte-quote' | 'data-erte-code',
+    styles: Partial<CSSStyleDeclaration>,
+  ) => {
+    if (!doc) return;
+    const sel = doc.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    if (range.collapsed) {
+      const blockEl = closestFromNode(range.startContainer, (el) =>
+        ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName),
+      );
+      if (blockEl) {
+        const wrapper = doc.createElement(tagName.toLowerCase());
+        wrapper.setAttribute(attr, 'true');
+        applyInlineStyles(wrapper, styles);
+        if (tagName === 'PRE') {
+          const code = doc.createElement('code');
+          code.innerHTML = blockEl.innerHTML || '&nbsp;';
+          wrapper.appendChild(code);
+        } else {
+          wrapper.innerHTML = blockEl.innerHTML || '&nbsp;';
+        }
+        blockEl.replaceWith(wrapper);
+        const newRange = doc.createRange();
+        newRange.selectNodeContents(wrapper);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      }
+      return;
+    }
+
+    const startBlock = closestFromNode(range.startContainer, (el) =>
+      ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName),
+    );
+    const endBlock = closestFromNode(range.endContainer, (el) =>
+      ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName),
+    );
+
+    if (startBlock && startBlock === endBlock) {
+      const startRange = doc.createRange();
+      startRange.setStart(startBlock, 0);
+      startRange.setEnd(range.startContainer, range.startOffset);
+      const beforeFrag = startRange.cloneContents();
+
+      const endRange = doc.createRange();
+      endRange.setStart(range.endContainer, range.endOffset);
+      endRange.setEnd(startBlock, startBlock.childNodes.length);
+      const afterFrag = endRange.cloneContents();
+
+      const extracted = range.extractContents();
+
+      const wrapper = doc.createElement(tagName.toLowerCase());
+      wrapper.setAttribute(attr, 'true');
+      applyInlineStyles(wrapper, styles);
+
+      if (tagName === 'PRE') {
+        const code = doc.createElement('code');
+        code.appendChild(extracted);
+        wrapper.appendChild(code);
+      } else {
+        wrapper.appendChild(extracted);
+      }
+
+      const parent = startBlock.parentElement;
+      if (parent) {
+        const hasBefore = beforeFrag.textContent?.trim() || beforeFrag.querySelector('*');
+        const hasAfter = afterFrag.textContent?.trim() || afterFrag.querySelector('*');
+
+        if (hasBefore) {
+          const beforeBlock = doc.createElement(startBlock.tagName.toLowerCase());
+          beforeBlock.appendChild(beforeFrag);
+          parent.insertBefore(beforeBlock, startBlock);
+        }
+        parent.insertBefore(wrapper, startBlock);
+        if (hasAfter) {
+          const afterBlock = doc.createElement(startBlock.tagName.toLowerCase());
+          afterBlock.appendChild(afterFrag);
+          parent.insertBefore(afterBlock, startBlock);
+        }
+        parent.removeChild(startBlock);
+      }
+      const newRange = doc.createRange();
+      newRange.selectNodeContents(wrapper);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      return;
+    }
+
+    const extracted = range.extractContents();
+    const wrapper = doc.createElement(tagName.toLowerCase());
+    wrapper.setAttribute(attr, 'true');
+    applyInlineStyles(wrapper, styles);
+
+    if (tagName === 'PRE') {
+      const code = doc.createElement('code');
+      code.appendChild(extracted);
+      wrapper.appendChild(code);
+    } else {
+      wrapper.appendChild(extracted);
+    }
+
+    range.insertNode(wrapper);
+    const newRange = doc.createRange();
+    newRange.selectNodeContents(wrapper);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+  };
+
   const applyBlockFormat = (tag: string) => {
     if (!doc) return;
     // Prefer the selection captured when the dropdown opened (robust against a
@@ -772,33 +1110,30 @@ export function FlowTextEditor({
 
     if (tag === 'blockquote') {
       if (quote) {
-        doc.execCommand('outdent');
+        unwrapCustomBlock(quote);
       } else {
-        doc.execCommand('formatBlock', false, '<blockquote>');
-        decorateSelectionBlocks('BLOCKQUOTE');
+        if (code) unwrapCustomBlock(code);
+        applyCustomBlockWrap('BLOCKQUOTE', 'data-erte-quote', QUOTE_INLINE_STYLE);
       }
     } else if (tag === 'codeblock') {
       if (code) {
-        // Toggle off: Code Block -> Paragraph (drop decoration, unwrap <pre>).
-        code.removeAttribute('data-erte-code');
-        code.removeAttribute('style');
-        doc.execCommand('formatBlock', false, '<p>');
-        stripBlocksInSelection('p');
+        unwrapCustomBlock(code);
       } else {
-        if (quote) doc.execCommand('outdent');
-        doc.execCommand('formatBlock', false, '<pre>');
-        decorateSelectionBlocks('PRE');
+        if (quote) unwrapCustomBlock(quote);
+        applyCustomBlockWrap('PRE', 'data-erte-code', CODE_BLOCK_INLINE_STYLE);
       }
     } else if (tag === 'pre' && code) {
       // Code Block -> plain Preformatted: same element, drop the decoration.
       code.removeAttribute('data-erte-code');
       code.removeAttribute('style');
     } else {
-      if (quote) doc.execCommand('outdent');
+      if (quote) unwrapCustomBlock(quote);
+      if (code) unwrapCustomBlock(code);
       doc.execCommand('formatBlock', false, `<${tag}>`);
       // Remove exported inline font-size/weight so the semantic style shows.
       stripBlocksInSelection(tag);
     }
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -832,6 +1167,7 @@ export function FlowTextEditor({
       else delete list.dataset.erteList;
       list.style.listStyleType = cssValue;
     }
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -858,6 +1194,7 @@ export function FlowTextEditor({
     for (let i = 0; i < 10 && hasIndentation(); i++) {
       doc.execCommand('outdent');
     }
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -874,6 +1211,7 @@ export function FlowTextEditor({
         hr.setAttribute('data-erte-hr', 'true');
         applyInlineStyles(hr, HR_INLINE_STYLE);
       });
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -956,6 +1294,7 @@ export function FlowTextEditor({
     }
 
     currentFontSizeRef.current = size;
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -1018,6 +1357,7 @@ export function FlowTextEditor({
     if (kind === 'text') currentTextColorRef.current = cssValue;
     else currentBgColorRef.current = color;
     updateColorIndicators();
+    takeSnapshot();
     propagateContent();
     syncToolbarState();
   };
@@ -1817,11 +2157,14 @@ export function FlowTextEditor({
     });
     linkButton.addEventListener('mousedown', (event) => event.preventDefault());
 
+    const undoBtn = makeButton({ icon: icons.undo, title: 'Undo (Ctrl+Z)', onClick: handleUndo });
+    undoBtnRef.current = undoBtn;
+
+    const redoBtn = makeButton({ icon: icons.redo, title: 'Redo (Ctrl+Y)', onClick: handleRedo });
+    redoBtnRef.current = redoBtn;
+
     const groups: HTMLElement[][] = [
-      [
-        makeButton({ icon: icons.undo, title: 'Undo', cmd: 'undo' }),
-        makeButton({ icon: icons.redo, title: 'Redo', cmd: 'redo' }),
-      ],
+      [undoBtn, redoBtn],
       [
         makeButton({ icon: icons.bold, title: 'Bold', cmd: 'bold' }),
         makeButton({ icon: icons.italic, title: 'Italic', cmd: 'italic' }),
@@ -2412,6 +2755,18 @@ export function FlowTextEditor({
               /* Custom bullet character (string list-style-type isn't universal). */
               .editor ul[data-erte-list='custom'] { list-style: none; }
 
+              /* Temporary visual highlight for text selection while link popover is open */
+              .erte-link-temp-highlight {
+                background-color: #b4d5fe !important;
+                color: inherit !important;
+                border-radius: 2px;
+              }
+              .erte-link-editing {
+                background-color: rgba(66, 133, 244, 0.25) !important;
+                outline: 1px solid var(--erte-accent) !important;
+                border-radius: 2px;
+              }
+
               /* Floating link popover (anchored below the toolbar link button) */
               .erte-link-popover {
                 position: fixed; z-index: 9000;
@@ -2476,7 +2831,10 @@ export function FlowTextEditor({
     if (!doc) return;
     const editor = doc.getElementById('editor');
     if (!editor) return;
-    editor.innerHTML = applySpellcheckIgnore(mailContent ?? '', spellcheckIgnoreWords);
+    editor.innerHTML = applySpellcheckIgnore(content ?? '', spellcheckIgnoreWords);
+    undoStackRef.current = [{ html: editor.innerHTML, selection: null }];
+    redoStackRef.current = [];
+    updateUndoRedoButtonState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc]);
 
@@ -2485,28 +2843,68 @@ export function FlowTextEditor({
     if (!doc || isInternalEdit.current) return;
     const editor = doc.getElementById('editor');
     if (!editor) return;
-    const displayContent = applySpellcheckIgnore(mailContent ?? '', spellcheckIgnoreWords);
+    const displayContent = applySpellcheckIgnore(content ?? '', spellcheckIgnoreWords);
     if (editor.innerHTML !== displayContent) {
       editor.innerHTML = displayContent;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mailContent, resetMailContent]);
+  }, [content, resetContent]);
 
-  // Propagate user edits back to the parent.
+  // Propagate user edits back to the parent and capture typing snapshots & keyboard shortcuts.
   useEffect(() => {
     if (!doc) return;
     const editor = doc.getElementById('editor');
     if (!editor) return;
-    const handleInput = () => {
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+      const mod = isMac ? event.metaKey : event.ctrlKey;
+      if (mod && !event.altKey) {
+        const key = event.key.toLowerCase();
+        if (key === 'z') {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.shiftKey) handleRedo();
+          else handleUndo();
+        } else if (key === 'y') {
+          event.preventDefault();
+          event.stopPropagation();
+          handleRedo();
+        }
+      }
+    };
+
+    const handleInput = (event: Event) => {
       isInternalEdit.current = true;
-      setMailContent(editor.innerHTML);
+      setContent(editor.innerHTML);
       // Reset the flag slightly later so external updates can flow again.
       setTimeout(() => {
         isInternalEdit.current = false;
       }, 100);
+
+      if (typingTimerRef.current !== null) {
+        window.clearTimeout(typingTimerRef.current);
+      }
+      const inputEvent = event as InputEvent;
+      if (
+        inputEvent.inputType === 'insertParagraph' ||
+        inputEvent.inputType === 'insertLineBreak' ||
+        inputEvent.data === ' '
+      ) {
+        takeSnapshot();
+      } else {
+        typingTimerRef.current = window.setTimeout(() => {
+          takeSnapshot();
+        }, 400);
+      }
     };
+
+    doc.addEventListener('keydown', onKeyDown, true);
     editor.addEventListener('input', handleInput);
-    return () => editor.removeEventListener('input', handleInput);
+    return () => {
+      doc.removeEventListener('keydown', onKeyDown, true);
+      editor.removeEventListener('input', handleInput);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc]);
 
@@ -2518,9 +2916,9 @@ export function FlowTextEditor({
     if (!doc) return;
     const editor = doc.getElementById('editor');
     if (!editor) return;
-    editor.innerHTML = applySpellcheckIgnore(mailContent ?? '', spellcheckIgnoreWords);
+    editor.innerHTML = applySpellcheckIgnore(content ?? '', spellcheckIgnoreWords);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetMailContent]);
+  }, [resetContent]);
 
   // (Re)build the toolbar when the iframe document is ready.
   useEffect(() => {
@@ -2532,7 +2930,13 @@ export function FlowTextEditor({
   // buttons. Returns its own cleanup (listeners + injected buttons).
   useEffect(() => {
     if (!doc) return;
-    return initTableTools({ doc, onContentChange: propagateContent });
+    return initTableTools({
+      doc,
+      onContentChange: () => {
+        takeSnapshot();
+        propagateContent();
+      },
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc]);
 

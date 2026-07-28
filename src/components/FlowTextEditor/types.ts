@@ -29,11 +29,11 @@ export type AiTextActionHandler = (payload: AiTextActionPayload) => Promise<stri
 
 export interface FlowTextEditorProps {
   /** Current HTML content of the editor (controlled). */
-  mailContent: RichTextValue;
+  content: RichTextValue;
   /** Called with the editor's HTML whenever the user edits it. */
-  setMailContent: (content: RichTextValue) => void;
-  /** Toggle to force the editor to re-sync `mailContent` (e.g. on reset). */
-  resetMailContent?: boolean;
+  setContent: (content: RichTextValue) => void;
+  /** Toggle to force the editor to re-sync `content` (e.g. on reset). */
+  resetContent?: boolean;
   /** Show the AI toolbar (Enhance, Proofread, …). Requires `onAiTextAction`. */
   showAiTools?: boolean;
   /** Height of the editor iframe (any CSS length). Defaults to `650px`. */

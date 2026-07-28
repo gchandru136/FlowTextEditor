@@ -19,7 +19,7 @@ const TABLE_WIDTH_CSS = `calc(100% - ${TABLE_ACTION_SPACE}px)`;
 
 interface TableToolsOptions {
   doc: Document;
-  /** Called after any table mutation so the host can sync `mailContent`. */
+  /** Called after any table mutation so the host can sync `content`. */
   onContentChange: () => void;
 }
 
@@ -42,8 +42,15 @@ const getCols = (table: HTMLTableElement): HTMLTableColElement[] =>
  * or add-buttons. Tables inserted by this editor carry `data-erte-table`;
  * legacy editor tables have no role attribute, so they stay interactive too.
  */
-const isEditableTable = (table: HTMLTableElement): boolean =>
-  table.dataset.erteTable === 'true' || table.getAttribute('role') !== 'presentation';
+const isEditableTable = (table: HTMLTableElement): boolean => {
+  if (table.dataset.erteTable === 'true') return true;
+  if (table.getAttribute('role') === 'presentation') return false;
+  // Ignore outer layout wrapper tables in email templates (e.g. single cell top-level wrappers)
+  if (table.rows.length === 1 && table.rows[0]?.cells.length === 1 && table.parentElement?.tagName === 'BODY') {
+    return false;
+  }
+  return true;
+};
 
 /**
  * Upgrade a table (including ones created before this feature) so it can be
@@ -53,6 +60,12 @@ const isEditableTable = (table: HTMLTableElement): boolean =>
 const ensureTableSetup = (doc: Document, table: HTMLTableElement): HTMLTableColElement[] => {
   const firstRow = table.rows[0];
   if (!firstRow) return [];
+
+  table.setAttribute('cellpadding', '0');
+  table.setAttribute('cellspacing', '0');
+  table.setAttribute('border', '0');
+  table.style.borderCollapse = 'collapse';
+  table.style.borderSpacing = '0';
 
   let cols = getCols(table);
   if (cols.length !== firstRow.cells.length) {
@@ -142,11 +155,8 @@ export function initTableTools({ doc, onContentChange }: TableToolsOptions): () 
   addColBtn.addEventListener('mouseenter', cancelHide);
   addRowBtn.addEventListener('mouseenter', cancelHide);
 
-  // Place each control in the table's reserved white action space — the column
-  // "+" centered in the ~52px gap to the RIGHT of the table, the row "+" in the
-  // gap BELOW it. The table no longer fills its container, so this space is the
-  // editor's white content, never the surrounding page/email background.
-  const GAP = 8;
+  // Place each control anchored right next to the active table.
+  const GAP = 6;
   const positionAddButtons = (table: HTMLTableElement, showCol: boolean, showRow: boolean) => {
     const tRect = table.getBoundingClientRect();
     const sRect = scroll.getBoundingClientRect();
@@ -154,21 +164,17 @@ export function initTableTools({ doc, onContentChange }: TableToolsOptions): () 
     const offsetTop = tRect.top - sRect.top + scroll.scrollTop;
 
     if (showCol) {
-      // Centre the button within the reserved action space, right of the table.
-      const centred = offsetLeft + tRect.width + (TABLE_ACTION_SPACE - ADD_BTN_SIZE) / 2;
-      // Defensive: never cross the scrollbar (only bites if the table is huge).
-      const maxLeft = scroll.scrollLeft + scroll.clientWidth - ADD_BTN_SIZE - 6;
-      addColBtn.style.left = `${Math.round(Math.min(centred, maxLeft))}px`;
+      addColBtn.style.left = `${Math.round(offsetLeft + tRect.width + GAP)}px`;
       addColBtn.style.top = `${offsetTop}px`;
       addColBtn.style.width = `${ADD_BTN_SIZE}px`;
-      addColBtn.style.height = `${tRect.height}px`;
+      addColBtn.style.height = `${Math.min(tRect.height, 48)}px`;
     }
     addColBtn.classList.toggle('is-visible', showCol);
 
     if (showRow) {
       addRowBtn.style.left = `${offsetLeft}px`;
       addRowBtn.style.top = `${offsetTop + tRect.height + GAP}px`;
-      addRowBtn.style.width = `${tRect.width}px`;
+      addRowBtn.style.width = `${Math.min(tRect.width, 120)}px`;
       addRowBtn.style.height = `${ADD_BTN_SIZE}px`;
     }
     addRowBtn.classList.toggle('is-visible', showRow);
@@ -300,10 +306,10 @@ export function initTableTools({ doc, onContentChange }: TableToolsOptions): () 
 
     editor.style.cursor = colZone ? 'ew-resize' : rowZone ? 'ns-resize' : '';
 
-    // "+" buttons appear while hovering the last column / last row.
+    // "+" buttons appear while hovering near the right edge of the last column / bottom edge of the last row.
     activeTable = table;
-    const isLastCol = cell.cellIndex === row.cells.length - 1;
-    const isLastRow = row.rowIndex === table.rows.length - 1;
+    const isLastCol = cell.cellIndex === row.cells.length - 1 && event.clientX >= rect.right - 35;
+    const isLastRow = row.rowIndex === table.rows.length - 1 && event.clientY >= rect.bottom - 35;
     if (isLastCol || isLastRow) positionAddButtons(table, isLastCol, isLastRow);
     else scheduleHide();
   };
@@ -317,6 +323,7 @@ export function initTableTools({ doc, onContentChange }: TableToolsOptions): () 
     if (downTarget && (addColBtn.contains(downTarget) || addRowBtn.contains(downTarget))) return;
     if (!colZone && !rowZone) return;
     event.preventDefault(); // keep the caret/selection where it is
+    onContentChange();
     dragging = true;
     cancelHide();
     hideAddButtons();

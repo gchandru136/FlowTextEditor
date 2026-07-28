@@ -12,7 +12,7 @@ A modern, feature-rich React Rich Text Editor built for email templates, newslet
 Try the editor live in your browser:  
 👉 **[https://flowtext-editor.vercel.app](https://flowtext-editor.vercel.app)**
 
-![FlowText Editor](./editor_main.png)
+![FlowText Editor](https://raw.githubusercontent.com/gchandru136/FlowTextEditor/DEV/editor_main.png)
 
 ---
 
@@ -68,8 +68,8 @@ export default function App() {
     <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
       <h1>My Editor</h1>
       <FlowTextEditor
-        mailContent={content}
-        setMailContent={setContent}
+        content={content}
+        setContent={setContent}
         modalHeight="500px"
         spellcheckIgnoreWords={['FlowText']}
       />
@@ -89,9 +89,9 @@ The `FlowTextEditor` component accepts the following props:
 
 | Prop | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **`mailContent`** | `string` | — | **Required.** Controlled HTML value representing the editor content. |
-| **`setMailContent`** | `(content: string) => void` | — | **Required.** Callback triggered on input change, returning the updated HTML. |
-| **`resetMailContent`** | `boolean` | `false` | When set to `true`, forces the editor to overwrite its internal content with the current `mailContent` prop value. |
+| **`content`** | `string` | — | **Required.** Controlled HTML value representing the editor content. |
+| **`setContent`** | `(content: string) => void` | — | **Required.** Callback triggered on input change, returning the updated HTML. |
+| **`resetContent`** | `boolean` | `false` | When set to `true`, forces the editor to overwrite its internal content with the current `content` prop value. |
 | **`modalHeight`** | `string` | `'650px'` | Height of the editor container (accepts any valid CSS unit like `px`, `vh`, `rem`). |
 | **`spellcheckIgnoreWords`** | `string[]` | `[]` | List of custom words (like brand names or codes) that will be excluded from the native browser spellchecker. |
 
@@ -99,7 +99,7 @@ The `FlowTextEditor` component accepts the following props:
 
 ## 🚀 AI Features
 
-![FlowText Editor with AI Features](./editor_ai.png)
+![FlowText Editor with AI Features](https://raw.githubusercontent.com/gchandru136/FlowTextEditor/DEV/editor_ai.png)
 
 AI-powered writing tools are currently under development and will be available in a future release. Stay tuned for exciting updates.
 

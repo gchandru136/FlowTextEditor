@@ -10,23 +10,22 @@ const CELL_STYLE = [
   'border: 1px solid #d7dce2',
   'font-weight: normal',
   'font-family: sans-serif',
+  'font-size: 14px',
   'vertical-align: top',
   'word-break: break-word',
   'overflow-wrap: break-word',
 ].join('; ');
 
 /**
- * Build the inline HTML for an `rows` × `cols` table (used with
+ * Build the inline HTML for a `rows` × `cols` table (used with
  * `execCommand('insertHTML', …)`).
  *
- * `table-layout: fixed` + an empty `<colgroup>` give every column an equal
- * width initially AND keep columns stable while typing (content wraps inside
- * its cell instead of reflowing neighbours). Manual column resizing writes px
- * widths onto the `<col>` elements, which fixed layout then treats as
- * proportions of the table width.
+ * Includes explicit `cellpadding="0" cellspacing="0" border="0"` and
+ * `border-collapse: collapse; border-spacing: 0;` for 100% email client
+ * compatibility (Gmail, Outlook, Apple Mail, Yahoo Mail).
  */
 export const getTableHtml = (rows: number, cols: number): string => `
-  <table data-erte-table="true" style="width: calc(100% - ${TABLE_ACTION_SPACE}px); table-layout: fixed; border-collapse: collapse; font-weight: normal; font-family: sans-serif;">
+  <table data-erte-table="true" cellpadding="0" cellspacing="0" border="0" style="width: calc(100% - ${TABLE_ACTION_SPACE}px); table-layout: fixed; border-collapse: collapse; border-spacing: 0; font-weight: normal; font-family: sans-serif; margin: 0.8em 0;">
     <colgroup>${Array.from({ length: cols })
       .map(() => '<col>')
       .join('')}</colgroup>
